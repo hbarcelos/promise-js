@@ -1,6 +1,6 @@
 {
   "name": "@hbarcelos/promise-js",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Simple Javascript Promise A+ implementation",
   "main": "promise.js",
   "dependencies": {},
