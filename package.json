@@ -1,0 +1,24 @@
+{
+  "name": "@hbarcelos/promise-js",
+  "version": "0.0.1",
+  "description": "Simple Javascript Promise A+ implementation",
+  "main": "promise.js",
+  "dependencies": {},
+  "devDependencies": {
+    "chai": "^3.4.1",
+    "chai-as-promised": "^5.2.0",
+    "mocha": "^2.3.4"
+  },
+  "repository":{
+      "type":"git",
+      "url":"https://github.com/hbarcelos/promise-js.git"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "keywords": [
+    "promise"
+  ],
+  "author": "Henrique Barcelos",
+  "license": "ISC"
+}
