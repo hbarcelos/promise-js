@@ -92,10 +92,14 @@ describe('Promise', function(){
             });
         });
 
-        it('Should return correct results on chained calls', function(done){
+        it('should return correct results on chained calls returning a promise', function(done){
             p.then(function(result){
                 assert.equal(result, 1);
-                return 2;
+                return new Promise(function(resolve, reject){
+                    setTimeout(function(){
+                        resolve(2);
+                    }, 50);
+                });
             }).then(function(result2){
                 assert.equal(result2, 2);
                 done();
@@ -115,6 +119,7 @@ describe('Promise', function(){
 
         it('Should call onReject callback when rejected', function(done){
             p.then(function(result){
+                assert.fail('Should not be called');
             }, function(reason){
                 assert.instanceOf(reason, Error);
                 done();
@@ -122,7 +127,9 @@ describe('Promise', function(){
         });
 
         it('Should also reject chained promise when no onReject callback is provided', function(done){
-            p.then().then(function(){}, function(reason){
+            p.then(function(){
+                assert.fail('Should not be called');
+            }).then(function(){}, function(reason){
                 assert.instanceOf(reason, Error);
                 done();
             });
@@ -142,7 +149,9 @@ describe('Promise', function(){
     describe('#reject', function(){
         it('Should create a rejected promise', function(done){
             var p = Promise.reject(new Error());
-            p.then(function(){}, function(reason){
+            p.then(function(){
+                assert.fail('Should not be called');
+            }, function(reason){
                 assert.instanceOf(reason, Error);
                 done();
             });
