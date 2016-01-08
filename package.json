@@ -1,6 +1,6 @@
 {
   "name": "@hbarcelos/promise-js",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Simple Javascript Promise A+ implementation",
   "main": "promise.js",
   "dependencies": {},
@@ -9,9 +9,9 @@
     "chai-as-promised": "^5.2.0",
     "mocha": "^2.3.4"
   },
-  "repository":{
-      "type":"git",
-      "url":"https://github.com/hbarcelos/promise-js.git"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hbarcelos/promise-js.git"
   },
   "scripts": {
     "test": "mocha"
