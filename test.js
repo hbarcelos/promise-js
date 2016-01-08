@@ -70,7 +70,7 @@ describe('Promise', function(){
             p = new Promise(function(resolve, reject){
                 setTimeout(function(){
                     resolve(1);
-                }, 200);
+                }, 50);
             });
         });
 
@@ -114,18 +114,38 @@ describe('Promise', function(){
         });
 
         it('Should call onReject callback when rejected', function(done){
-                p.then(function(result){
-                }, function(reason){
-                    assert.instanceOf(reason, Error);
-                    done();
-                });
+            p.then(function(result){
+            }, function(reason){
+                assert.instanceOf(reason, Error);
+                done();
+            });
         });
 
         it('Should also reject chained promise when no onReject callback is provided', function(done){
-                p.then().then(function(){}, function(reason){
-                    assert.instanceOf(reason, Error);
-                    done();
-                });
+            p.then().then(function(){}, function(reason){
+                assert.instanceOf(reason, Error);
+                done();
+            });
+        });
+    });
+
+    describe('#resolve', function(){
+        it('Should create a fulfilled promise', function(done){
+            var p = Promise.resolve(1);
+            p.then(function(value){
+                assert.equal(value, 1);
+                done();
+            });
+        });
+    });
+    
+    describe('#reject', function(){
+        it('Should create a rejected promise', function(done){
+            var p = Promise.reject(new Error());
+            p.then(function(){}, function(reason){
+                assert.instanceOf(reason, Error);
+                done();
+            });
         });
     });
 });

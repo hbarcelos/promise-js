@@ -118,5 +118,12 @@ Promise.prototype.isPending = function(){
     return this.state == State.PENDING;
 };
 
+Promise.resolve = function(value){
+    return new Promise(resolve => resolve(value));
+}
+
+Promise.reject = function(reason){
+    return new Promise((resolve, reject) => reject(reason));
+}
 
 module.exports = Promise;
