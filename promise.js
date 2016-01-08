@@ -1,8 +1,26 @@
 const util = require('util');
 
-module.exports = Promise;
+const State = {
+    PENDING: Symbol.for('pending'),
+    FULFILLED: Symbol.for('fulfilled'),
+    REJECTED: Symbol.for('rejected')
+};
 
-var STATES = {PENDING: 0, FULFILLED: 1, REJECTED: -1};
+function changeState(state) {
+    if (this.state === state) {
+        throw new Error('Cannot transition to the same state');
+    }
+
+    if(!this.isPending()) {
+        throw new Error('Cannot transition from current state');
+    }
+
+    if(state !== State.FULFILLED && state !== State.REJECTED) {
+        throw new Error('Cannot transition to state ' + state + ': invalid state');
+    }
+
+    this.state = state;
+}
 
 function isFunction(functionToCheck) {
     return (typeof functionToCheck === 'function' 
@@ -18,75 +36,56 @@ function isThennable(objectToCheck) {
 }
 
 function fulfill(value) {
+    changeState.call(this, State.FULFILLED);
     this.value = value;
-    this.state = STATES.FULFILLED;
-    onFulfillHandler.call(this, this.value);
-}
-
-function enqueueCallback(property, callback) {
-    if (isFunction(callback)) {
-        property.push(callback);
-    }
-}
-
-function onFulfillHandler(value)  {
-    for (fulfillCallback of this.fulfillCallbackQueue) {
-        setTimeout(fulfillCallback.bind(null), 1, value);
-    }
-    this.fulfillCallBackQueue = [];
+    run.call(this);
 }
 
 function reject(reason) {
-    this.reason = reason;
-    this.state = STATES.REJECTED;
-    onRejectHandler.call(this, this.reason);
+    changeState.call(this, State.REJECTED);
+    this.value = reason;
+    run.call(this);
 }
 
-function onRejectHandler(value)  {
-    for (rejectCallback of this.rejectCallbackQueue) {
-        setTimeout(rejectCallback.bind(null), 1, value);
-    }
-    this.rejectCallBackQueue = [];
-}
-
-function isFulfilled() {
-    return this.state == STATES.FULFILLED;
-}
-
-function isRejected() {
-    return this.state == STATES.REJECTED;
-}
-
-function isPending() {
-    return this.state == STATES.PENDING;
-}
-
-function promiseResolution(promise, x) {
+function resolve(promise, x) {
     if (promise === x) {
-        throw new TypeError('Cannot resolve promise with itself');
-    } else if (x instanceof Promise) {
-        if (isFulfilled.call(x)) {
-            return new Promise(function(resolve, reject){
-                resolve(x.value);
+        promise.reject(new TypeError('Cannot resolve promise with itself'));
+    } else if (x && x instanceof Promise) {
+        if (x.isPending()) {
+            x.then(function(value){
+                fulfill.call(promise, value);
+            }, function(reason){
+                reject.call(promise, value);
             });
-        } else if (isRejected.call(x)) {
-            return new Promise(function(resolve, reject){
-                reject(x.reason);
-            });
-        } else {
-            return x;
+        } else if (x.isFulfilled()) {
+            fulfill.call(promise, x.value);
+        } else if (x.isRejected()) {
+            reject.call(promise, x.value);
         }
     } else {
-        return new Promise(function(resolve, reject){
-            resolve(x);
-        });
+        fulfill.call(promise, x);
     }
+}
+
+function run() {
+    if (this.isPending()) return;
+
+    setTimeout(() => {
+        while (this.queue.length > 0) {
+            var next = this.queue.shift();
+            try {
+                var fn = this.isFulfilled() ? next.fulfill : next.reject;
+                resolve(next.promise, fn(this.value));
+            } catch (e) {
+                reject.call(next.promise, e);
+            }
+        }
+    }, 0);
 }
 
 function Promise(executor) {
-    this.state = STATES.PENDING;
-    this.fulfillCallbackQueue = [];
-    this.rejectCallbackQueue = [];
+    this.state = State.PENDING;
+    this.queue = [];
 
     if (isFunction(executor)) {
         executor(fulfill.bind(this), reject.bind(this));
@@ -94,29 +93,30 @@ function Promise(executor) {
 }
 
 Promise.prototype.then = function(onFulfill, onReject) {
-    var ret;
-    var self = this;
+    var p = new Promise();
 
-    if (isFulfilled.call(this)) {
-        if (isFunction(onFulfill)) {
-            return promiseResolution(this, onFulfill(this.value));
-        } else {
-            return new Promise(function(resolve){
-                resolve(self.value);
-            });
-        }
-    } else if (isRejected.call(this)) {
-        if (isFunction(onReject)) {
-            return promiseResolution(this, onReject(this.reason));
-        } else {
-            return new Promise(function(resolve, reject){
-                reject(self.reason);
-            });
-        }
-    } else if (isPending.call(this)) {
-        enqueueCallback(this.fulfillCallbackQueue, onFulfill);
-        enqueueCallback(this.rejectCallbackQueue, onReject);
-        // ... what now?
-    }
+    this.queue.push({
+        fulfill: isFunction(onFulfill) ? onFulfill : v => v,
+        reject: isFunction(onReject) ? onReject : e => { throw e },
+        promise: p,
+    });
+
+    run.call(this);
+
+    return p;
 };
 
+Promise.prototype.isFulfilled = function(){
+    return this.state == State.FULFILLED;
+};
+
+Promise.prototype.isRejected = function(){
+    return this.state == State.REJECTED;
+};
+
+Promise.prototype.isPending = function(){
+    return this.state == State.PENDING;
+};
+
+
+module.exports = Promise;

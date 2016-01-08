@@ -11,7 +11,7 @@ describe('Promise', function(){
 
     describe('#constructor', function(){
 
-        it('Should successfully create a promise object', function(done){
+        it('Should successfully create a Promise object', function(done){
             assert.instanceOf(new Promise(function(resolve, reject){
 
             }), Promise);
@@ -21,13 +21,13 @@ describe('Promise', function(){
 
         it('Should create a promise object in pending state', function(done){
             var p = new Promise();
-            assert.equal(p.state, 0);
+            assert(p.isPending());
             done();
         });
 
     });
 
-    describe('#then: synchronous behavior', function(){
+    describe('#then: resolving with synchronous behavior', function(){
         var p;
         beforeEach(function(){
             p = new Promise(function(resolve, reject){
@@ -64,7 +64,7 @@ describe('Promise', function(){
         });
     });
 
-    describe('#then: asynchronous behavior', function(){
+    describe('#then: resolving with asynchronous behavior', function(){
         var p;
         beforeEach(function(){
             p = new Promise(function(resolve, reject){
@@ -100,6 +100,32 @@ describe('Promise', function(){
                 assert.equal(result2, 2);
                 done();
             });
+        });
+    });
+
+    describe('#then: rejecting', function() {
+        var p;
+        beforeEach(function(){
+            p = new Promise(function(resolve, reject){
+                setTimeout(function(){
+                    reject(new Error());
+                }, 50);
+            });
+        });
+
+        it('Should call onReject callback when rejected', function(done){
+                p.then(function(result){
+                }, function(reason){
+                    assert.instanceOf(reason, Error);
+                    done();
+                });
+        });
+
+        it('Should also reject chained promise when no onReject callback is provided', function(done){
+                p.then().then(function(){}, function(reason){
+                    assert.instanceOf(reason, Error);
+                    done();
+                });
         });
     });
 });
