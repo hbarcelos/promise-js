@@ -87,9 +87,10 @@ function fulfill(value) {
         changeState.call(this, State.FULFILLED);
         this.value = value;
     } catch (e) {
+        // do nothing, probably already fulfilled or rejected
+    } finally {
+        run.call(this);
     }
-
-    run.call(this);
 }
 
 function reject(reason) {
@@ -97,8 +98,10 @@ function reject(reason) {
         changeState.call(this, State.REJECTED);
         this.value = reason;
     } catch (e) {
+        // do nothing, probably already fulfilled or rejected
+    } finally {
+        run.call(this);
     }
-    run.call(this);
 }
 
 function resolve(promise, x) {
