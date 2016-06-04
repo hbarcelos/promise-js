@@ -1,10 +1,61 @@
-const util = require('util');
+'use strict';
 
 const State = {
     PENDING: Symbol.for('pending'),
     FULFILLED: Symbol.for('fulfilled'),
     REJECTED: Symbol.for('rejected')
 };
+
+let instanceNo = 1;
+
+function Promise(executor) {
+    this._instanceNo = instanceNo++;
+    this.state = State.PENDING;
+    this.queue = [];
+
+    if (isFunction(executor)) {
+        executor(fulfill.bind(this), reject.bind(this));
+    }
+
+    run.call(this);
+}
+
+module.exports = Promise;
+
+Promise.prototype.then = function(onFulfill, onReject) {
+    let p = new Promise();
+
+    let pending = {
+        fulfill: isFunction(onFulfill) ? onFulfill : v => v,
+        reject: isFunction(onReject) ? onReject : e => { throw e },
+        promise: p,
+    }
+
+    this.queue.push(pending);
+
+    return p;
+};
+
+Promise.prototype.isFulfilled = function(){
+    return this.state == State.FULFILLED;
+};
+
+Promise.prototype.isRejected = function(){
+    return this.state == State.REJECTED;
+};
+
+Promise.prototype.isPending = function(){
+    return this.state == State.PENDING;
+};
+
+Promise.resolve = function(value){
+    return new Promise(resolve => resolve(value));
+}
+
+Promise.reject = function(reason){
+    return new Promise((resolve, reject) => reject(reason));
+}
+
 
 function changeState(state) {
     if (this.state === state) {
@@ -32,18 +83,26 @@ function isObject(objectToCheck) {
 }
 
 function isThennable(objectToCheck) {
-    return isObject(objectToCheck) && isFunction(objectToCheck.then);
+    return (isObject(objectToCheck) || isFunction(objectToCheck))
+        && isFunction(objectToCheck.then);
 }
 
 function fulfill(value) {
-    changeState.call(this, State.FULFILLED);
-    this.value = value;
+    try {
+        changeState.call(this, State.FULFILLED);
+        this.value = value;
+    } catch (e) {
+    }
+
     run.call(this);
 }
 
 function reject(reason) {
-    changeState.call(this, State.REJECTED);
-    this.value = reason;
+    try {
+        changeState.call(this, State.REJECTED);
+        this.value = reason;
+    } catch (e) {
+    }
     run.call(this);
 }
 
@@ -53,15 +112,42 @@ function resolve(promise, x) {
     } else if (x && x instanceof Promise) {
         if (x.isPending()) {
             x.then(function(value){
-                fulfill.call(promise, value);
+                resolve(promise, value);
             }, function(reason){
-                reject.call(promise, value);
+                reject.call(promise, reason);
             });
         } else if (x.isFulfilled()) {
-            fulfill.call(promise, x.value);
-        } else if (x.isRejected()) {
+            resolve(promise, x.value);
+        } else {
             reject.call(promise, x.value);
         }
+    } else if (isObject(x) || isFunction(x)) {
+        let called = false;
+
+        try {
+            let then = x.then;
+            if (isFunction(then)) {
+                then.call(x, function(y){
+                    if (!called) {
+                        called = true;
+                        resolve(promise, y);
+                    }
+                }, function(r) {
+                    if (!called) {
+                        called = true;
+                        reject.call(promise, r);
+                    }
+                });
+            } else {
+                fulfill.call(promise, x);
+            }
+        } catch(e) {
+            if (!called) {
+                reject.call(promise, e);
+            }
+            return;
+        }
+
     } else {
         fulfill.call(promise, x);
     }
@@ -72,58 +158,13 @@ function run() {
 
     setTimeout(() => {
         while (this.queue.length > 0) {
-            var next = this.queue.shift();
+            let next = this.queue.shift();
             try {
-                var fn = this.isFulfilled() ? next.fulfill : next.reject;
+                let fn = this.isFulfilled() ? next.fulfill : next.reject;
                 resolve(next.promise, fn(this.value));
             } catch (e) {
                 reject.call(next.promise, e);
             }
         }
-    }, 0);
+    }, 1);
 }
-
-function Promise(executor) {
-    this.state = State.PENDING;
-    this.queue = [];
-
-    if (isFunction(executor)) {
-        executor(fulfill.bind(this), reject.bind(this));
-    }
-}
-
-Promise.prototype.then = function(onFulfill, onReject) {
-    var p = new Promise();
-
-    this.queue.push({
-        fulfill: isFunction(onFulfill) ? onFulfill : v => v,
-        reject: isFunction(onReject) ? onReject : e => { throw e },
-        promise: p,
-    });
-
-    run.call(this);
-
-    return p;
-};
-
-Promise.prototype.isFulfilled = function(){
-    return this.state == State.FULFILLED;
-};
-
-Promise.prototype.isRejected = function(){
-    return this.state == State.REJECTED;
-};
-
-Promise.prototype.isPending = function(){
-    return this.state == State.PENDING;
-};
-
-Promise.resolve = function(value){
-    return new Promise(resolve => resolve(value));
-}
-
-Promise.reject = function(reason){
-    return new Promise((resolve, reject) => reject(reason));
-}
-
-module.exports = Promise;
