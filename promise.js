@@ -82,11 +82,6 @@ function isObject(objectToCheck) {
     return objectToCheck === Object(objectToCheck);
 }
 
-function isThennable(objectToCheck) {
-    return (isObject(objectToCheck) || isFunction(objectToCheck))
-        && isFunction(objectToCheck.then);
-}
-
 function fulfill(value) {
     try {
         changeState.call(this, State.FULFILLED);
